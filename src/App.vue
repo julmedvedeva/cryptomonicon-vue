@@ -1,11 +1,29 @@
 <template>
   <div class="container mx-auto flex flex-col items-center bg-gray-100 p-4">
-    <!--        <div class="fixed w-100 h-100 opacity-80 bg-purple-800 inset-0 z-50 flex items-center justify-center">-->
-    <!--            <svg class="animate-spin -ml-1 mr-3 h-12 w-12 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">-->
-    <!--                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>-->
-    <!--                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>-->
-    <!--            </svg>-->
-    <!--        </div>-->
+    <!--    <div-->
+    <!--      class="fixed w-100 h-100 opacity-80 bg-purple-800 inset-0 z-50 flex items-center justify-center"-->
+    <!--    >-->
+    <!--      <svg-->
+    <!--        class="animate-spin -ml-1 mr-3 h-12 w-12 text-white"-->
+    <!--        xmlns="http://www.w3.org/2000/svg"-->
+    <!--        fill="none"-->
+    <!--        viewBox="0 0 24 24"-->
+    <!--      >-->
+    <!--        <circle-->
+    <!--          class="opacity-25"-->
+    <!--          cx="12"-->
+    <!--          cy="12"-->
+    <!--          r="10"-->
+    <!--          stroke="currentColor"-->
+    <!--          stroke-width="4"-->
+    <!--        ></circle>-->
+    <!--        <path-->
+    <!--          class="opacity-75"-->
+    <!--          fill="currentColor"-->
+    <!--          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"-->
+    <!--        ></path>-->
+    <!--      </svg>-->
+    <!--    </div>-->
     <div class="container">
       <section>
         <div class="flex">
@@ -17,6 +35,7 @@
               <input
                 v-model="ticker"
                 v-on:keydown.enter="add"
+                v-on:input="(e) => findVariables(e.target.value)"
                 type="text"
                 name="wallet"
                 id="wallet"
@@ -24,29 +43,20 @@
                 placeholder="Например DOGE"
               />
             </div>
-            <!--            <div class="flex bg-white shadow-md p-1 rounded-md shadow-md flex-wrap">-->
-            <!--              <span-->
-            <!--                class="inline-flex items-center px-2 m-1 rounded-md text-xs font-medium bg-gray-300 text-gray-800 cursor-pointer"-->
-            <!--              >-->
-            <!--                BTC-->
-            <!--              </span>-->
-            <!--              <span-->
-            <!--                class="inline-flex items-center px-2 m-1 rounded-md text-xs font-medium bg-gray-300 text-gray-800 cursor-pointer"-->
-            <!--              >-->
-            <!--                DOGE-->
-            <!--              </span>-->
-            <!--              <span-->
-            <!--                class="inline-flex items-center px-2 m-1 rounded-md text-xs font-medium bg-gray-300 text-gray-800 cursor-pointer"-->
-            <!--              >-->
-            <!--                BCH-->
-            <!--              </span>-->
-            <!--              <span-->
-            <!--                class="inline-flex items-center px-2 m-1 rounded-md text-xs font-medium bg-gray-300 text-gray-800 cursor-pointer"-->
-            <!--              >-->
-            <!--                CHD-->
-            <!--              </span>-->
-            <!--            </div>-->
-            <!--            <div class="text-sm text-red-600">Такой тикер уже добавлен</div>-->
+            <div
+              v-if="suggest.length"
+              class="flex bg-white shadow-md p-1 rounded-md shadow-md flex-wrap"
+            >
+              <span
+                v-for="s in suggest"
+                v-bind:key="s"
+                v-on:keydown="findVariables"
+                class="inline-flex items-center px-2 m-1 rounded-md text-xs font-medium bg-gray-300 text-gray-800 cursor-pointer"
+              >
+                {{ s }}
+              </span>
+            </div>
+            <div class="text-sm text-red-600">Такой тикер уже добавлен</div>
           </div>
         </div>
         <button
@@ -158,6 +168,8 @@
 </template>
 
 <script>
+import { toRaw } from 'vue';
+
 export default {
   name: 'APP',
   data() {
@@ -166,9 +178,14 @@ export default {
       tickers: [],
       sel: null,
       graph: [],
+      allData: null,
+      suggest: [],
     };
   },
-  created() {
+
+  async created() {
+    await this.fetchData();
+
     const tickersData = localStorage.getItem('cryptomonicon-list');
     if (tickersData) {
       this.tickers = JSON.parse(tickersData);
@@ -176,13 +193,38 @@ export default {
     }
   },
   methods: {
+    async fetchData() {
+      const apiKey =
+        '645a62f66756dcd69a2fe1a617ee476df5bddab0f1c59c966cb5e70ce7207d20';
+      const url = `https://min-api.cryptocompare.com/data/blockchain/list?api_key=${apiKey}`;
+      const fetching = await fetch(url);
+      const fetchingToJSON = await fetching.json();
+      this.allData = fetchingToJSON.Data;
+      return (this.allData = fetchingToJSON.Data);
+    },
     add() {
-      const currentTicker = { name: this.ticker, price: '0' };
+      const currentTicker = { name: this.ticker.toUpperCase(), price: '0' };
       this.tickers.push(currentTicker);
       localStorage.setItem('cryptomonicon-list', JSON.stringify(this.tickers));
 
       this.subscribeToUpdate(currentTicker.name);
       this.ticker = '';
+    },
+    findVariables(name) {
+      if (name !== '') {
+        // transform to array data
+        const allDataToRaw = Object.keys(toRaw(this.allData));
+        // find all value that match with value from input
+        const findValueByKey = allDataToRaw.filter((keyword) => {
+          return keyword.toLowerCase().includes(name.toLowerCase());
+        });
+
+        this.suggest = findValueByKey.slice(0, 4);
+      } else {
+        this.suggest = [];
+      }
+
+      return this.suggest;
     },
     subscribeToUpdate(tickerName) {
       setInterval(async () => {
