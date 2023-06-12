@@ -50,13 +50,15 @@
               <span
                 v-for="s in suggest"
                 v-bind:key="s"
-                v-on:keydown="findVariables"
+                v-on:click="(e) => setTicker(e.target.textContent)"
                 class="inline-flex items-center px-2 m-1 rounded-md text-xs font-medium bg-gray-300 text-gray-800 cursor-pointer"
               >
                 {{ s }}
               </span>
             </div>
-            <div class="text-sm text-red-600">Такой тикер уже добавлен</div>
+            <div v-if="error" class="text-sm text-red-600">
+              Такой тикер уже добавлен
+            </div>
           </div>
         </div>
         <button
@@ -180,6 +182,7 @@ export default {
       graph: [],
       allData: null,
       suggest: [],
+      error: false,
     };
   },
 
@@ -212,9 +215,7 @@ export default {
     },
     findVariables(name) {
       if (name !== '') {
-        // transform to array data
         const allDataToRaw = Object.keys(toRaw(this.allData));
-        // find all value that match with value from input
         const findValueByKey = allDataToRaw.filter((keyword) => {
           return keyword.toLowerCase().includes(name.toLowerCase());
         });
@@ -225,6 +226,12 @@ export default {
       }
 
       return this.suggest;
+    },
+    setTicker(ticker) {
+      this.ticker = ticker;
+      this.add();
+      console.log('tickers', { tickers: this.tickers, ticker: this.ticker });
+      // if this yet in array output warning message
     },
     subscribeToUpdate(tickerName) {
       setInterval(async () => {
