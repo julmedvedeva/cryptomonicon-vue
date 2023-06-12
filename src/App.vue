@@ -214,6 +214,7 @@ export default {
       this.ticker = '';
     },
     findVariables(name) {
+      this.error = false;
       if (name !== '') {
         const allDataToRaw = Object.keys(toRaw(this.allData));
         const findValueByKey = allDataToRaw.filter((keyword) => {
@@ -222,6 +223,7 @@ export default {
 
         this.suggest = findValueByKey.slice(0, 4);
       } else {
+        this.error = false;
         this.suggest = [];
       }
 
@@ -229,9 +231,15 @@ export default {
     },
     setTicker(ticker) {
       this.ticker = ticker;
-      this.add();
-      console.log('tickers', { tickers: this.tickers, ticker: this.ticker });
-      // if this yet in array output warning message
+      const findExistingTicker = toRaw(this.tickers).some((item) => {
+        return item.name === ticker;
+      });
+      if (findExistingTicker === true) {
+        this.error = true;
+      } else {
+        this.error = false;
+        this.add();
+      }
     },
     subscribeToUpdate(tickerName) {
       setInterval(async () => {
