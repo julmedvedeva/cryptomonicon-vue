@@ -84,7 +84,7 @@
           <button
             type="button"
             v-if="page > 1"
-            v-on:click="page = page - 1"
+            v-on:click="page = +page - 1"
             class="my-4 mr-10 inline-flex items-center py-2 px-4 border border-transparent shadow-sm text-sm leading-4 font-medium rounded-full text-white bg-gray-600 hover:bg-gray-700 transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
           >
             <svg
@@ -105,7 +105,7 @@
           </button>
           <button
             v-if="hasNextPage"
-            v-on:click="page = page + 1"
+            v-on:click="page = +page + 1"
             type="button"
             class="my-4 inline-flex items-center py-2 px-4 border border-transparent shadow-sm text-sm leading-4 font-medium rounded-full text-white bg-gray-600 hover:bg-gray-700 transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
           >
@@ -249,13 +249,48 @@ export default {
   },
 
   async created() {
-    await this.fetchData();
+    const windowData = Object.fromEntries(
+      new URL(window.location).searchParams.entries(),
+    );
+
+    if (windowData.filter) {
+      this.filter = windowData.filter;
+    }
+
+    if (windowData.page) {
+      this.page = windowData.page;
+    }
 
     const tickersData = localStorage.getItem('cryptomonicon-list');
     if (tickersData) {
       this.tickers = JSON.parse(tickersData);
       this.tickers.forEach((ticker) => this.subscribeToUpdate(ticker.name));
     }
+
+    await this.fetchData();
+  },
+  watch: {
+    filter() {
+      const windowData = Object.fromEntries(
+        new URL(window.location).searchParams.entries(),
+      );
+      if (!windowData.page) {
+        this.page = 1;
+      }
+
+      window.history.pushState(
+        null,
+        document.title,
+        `${window.location.pathname}?filter=${this.filter}&page=${this.page}`,
+      );
+    },
+    page() {
+      window.history.pushState(
+        null,
+        document.title,
+        `${window.location.pathname}?filter=${this.filter}&page=${this.page}`,
+      );
+    },
   },
 
   methods: {
@@ -348,11 +383,6 @@ export default {
       return this.graph.map(
         (price) => 5 + ((price - minValue) * 95) / (maxValue - minValue),
       );
-    },
-  },
-  watch: {
-    filter() {
-      this.page = 1;
     },
   },
 };
