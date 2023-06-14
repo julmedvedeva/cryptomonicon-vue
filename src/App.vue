@@ -66,7 +66,6 @@
           type="button"
           class="my-4 inline-flex items-center py-2 px-4 border border-transparent shadow-sm text-sm leading-4 font-medium rounded-full text-white bg-gray-600 hover:bg-gray-700 transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
         >
-          <!-- Heroicon name: solid/mail -->
           <svg
             class="-ml-0.5 mr-2 h-6 w-6"
             xmlns="http://www.w3.org/2000/svg"
@@ -81,12 +80,72 @@
           </svg>
           Добавить
         </button>
+        <div>
+          <button
+            type="button"
+            class="my-4 mr-10 inline-flex items-center py-2 px-4 border border-transparent shadow-sm text-sm leading-4 font-medium rounded-full text-white bg-gray-600 hover:bg-gray-700 transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
+          >
+            <svg
+              class="-ml-0.5 mr-2 h-6 w-6"
+              xmlns="http://www.w3.org/2000/svg"
+              width="30"
+              height="30"
+              viewBox="0 0 50 50"
+              fill="#ffffff"
+            >
+              <path
+                d="M48.6,23H15.4c-0.9,0-1.3-1.1-0.7-1.7l9.6-9.6c0.6-0.6,0.6-1.5,0-2.1l-2.2-2.2c-0.6-0.6-1.5-0.6-2.1,0
+	L2.5,25c-0.6,0.6-0.6,1.5,0,2.1L20,44.6c0.6,0.6,1.5,0.6,2.1,0l2.1-2.1c0.6-0.6,0.6-1.5,0-2.1l-9.6-9.6C14,30.1,14.4,29,15.3,29
+	h33.2c0.8,0,1.5-0.6,1.5-1.4v-3C50,23.8,49.4,23,48.6,23z"
+              />
+            </svg>
+            Назад
+          </button>
+          <button
+            v-if="hasNextPage"
+            type="button"
+            class="my-4 inline-flex items-center py-2 px-4 border border-transparent shadow-sm text-sm leading-4 font-medium rounded-full text-white bg-gray-600 hover:bg-gray-700 transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
+          >
+            <svg
+              class="-ml-0.5 mr-2 h-6 w-6"
+              fill="#ffffff"
+              xmlns="http://www.w3.org/2000/svg"
+              width="30"
+              height="30"
+              viewBox="0 0 50 50"
+            >
+              <path
+                d="M3.4,29h33.2c0.9,0,1.3,1.1,0.7,1.7l-9.6,9.6c-0.6,0.6-0.6,1.5,0,2.1l2.2,2.2c0.6,0.6,1.5,0.6,2.1,0L49.5,27
+	c0.6-0.6,0.6-1.5,0-2.1L32,7.4c-0.6-0.6-1.5-0.6-2.1,0l-2.1,2.1c-0.6,0.6-0.6,1.5,0,2.1l9.6,9.6c0.6,0.7,0.2,1.8-0.7,1.8H3.5
+	C2.7,23,2,23.6,2,24.4v3C2,28.2,2.6,29,3.4,29z"
+              />
+            </svg>
+            Вперед
+          </button>
+        </div>
+        <div class="flex">
+          <div class="max-w-xs">
+            <label for="filter" class="block text-sm font-medium text-gray-700">
+              Фильтрация</label
+            >
+            <div class="mt-1 relative rounded-md shadow-md">
+              <input
+                v-model="filter"
+                type="text"
+                id="filter"
+                name="filter"
+                class="block w-full pr-10 border-gray-300 text-gray-900 focus:outline-none focus:ring-gray-500 focus:border-gray-500 sm:text-sm rounded-md"
+                placeholder="Например DOGE"
+              />
+            </div>
+          </div>
+        </div>
       </section>
       <template v-if="tickers.length">
         <hr class="w-full border-t border-gray-600 my-4" />
         <dl class="mt-5 grid grid-cols-1 gap-5 sm:grid-cols-3">
           <div
-            v-for="t in tickers"
+            v-for="t in filteredTickers()"
             v-bind:key="t.name"
             v-on:click="selectTicker(t)"
             v-bind:class="{
@@ -144,9 +203,6 @@
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
-            xmlns:xlink="http://www.w3.org/1999/xlink"
-            xmlns:svgjs="http://svgjs.com/svgjs"
-            version="1.1"
             width="30"
             height="30"
             x="0"
@@ -183,6 +239,9 @@ export default {
       allData: null,
       suggest: [],
       error: false,
+      filter: '',
+      page: 1,
+      hasNextPage: true,
     };
   },
 
@@ -196,6 +255,12 @@ export default {
     }
   },
   methods: {
+    filteredTickers() {
+      // ищем по велью среди данных из this.tickers
+      return this.tickers.filter((ticker) =>
+        ticker.name.toLowerCase().includes(this.filter.toLowerCase()),
+      );
+    },
     async fetchData() {
       const apiKey =
         '645a62f66756dcd69a2fe1a617ee476df5bddab0f1c59c966cb5e70ce7207d20';
@@ -247,6 +312,9 @@ export default {
           `https://min-api.cryptocompare.com/data/price?fsym=${tickerName}&tsyms=USD&api_key=645a62f66756dcd69a2fe1a617ee476df5bddab0f1c59c966cb5e70ce7207d20`,
         );
         const dataFetch = await fetching.json();
+        // TODO обработчик для ошибки
+        // ответ сервера
+        // "cccagg_or_exchange market does not exist for this coin pair (MRPH-USD)"
         this.tickers.find((item) => item.name === tickerName).price =
           dataFetch.USD > 1
             ? dataFetch.USD.toFixed(2)
