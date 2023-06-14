@@ -83,6 +83,8 @@
         <div>
           <button
             type="button"
+            v-if="page > 1"
+            v-on:click="page = page - 1"
             class="my-4 mr-10 inline-flex items-center py-2 px-4 border border-transparent shadow-sm text-sm leading-4 font-medium rounded-full text-white bg-gray-600 hover:bg-gray-700 transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
           >
             <svg
@@ -103,6 +105,7 @@
           </button>
           <button
             v-if="hasNextPage"
+            v-on:click="page = page + 1"
             type="button"
             class="my-4 inline-flex items-center py-2 px-4 border border-transparent shadow-sm text-sm leading-4 font-medium rounded-full text-white bg-gray-600 hover:bg-gray-700 transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
           >
@@ -254,12 +257,18 @@ export default {
       this.tickers.forEach((ticker) => this.subscribeToUpdate(ticker.name));
     }
   },
+
   methods: {
     filteredTickers() {
-      // ищем по велью среди данных из this.tickers
-      return this.tickers.filter((ticker) =>
+      const start = (this.page - 1) * 6;
+      const end = this.page * 6;
+      const filtered = this.tickers.filter((ticker) =>
         ticker.name.toLowerCase().includes(this.filter.toLowerCase()),
       );
+
+      this.hasNextPage = filtered.length > end;
+
+      return filtered.slice(start, end);
     },
     async fetchData() {
       const apiKey =
@@ -277,6 +286,7 @@ export default {
 
       this.subscribeToUpdate(currentTicker.name);
       this.ticker = '';
+      this.filter = '';
     },
     findVariables(name) {
       this.error = false;
@@ -338,6 +348,11 @@ export default {
       return this.graph.map(
         (price) => 5 + ((price - minValue) * 95) / (maxValue - minValue),
       );
+    },
+  },
+  watch: {
+    filter() {
+      this.page = 1;
     },
   },
 };
