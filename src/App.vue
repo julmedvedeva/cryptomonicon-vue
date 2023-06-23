@@ -148,11 +148,11 @@
         <hr class="w-full border-t border-gray-600 my-4" />
         <dl class="mt-5 grid grid-cols-1 gap-5 sm:grid-cols-3">
           <div
-            v-for="t in filteredTickers()"
+            v-for="t in paginatedTickers"
             v-bind:key="t.name"
             v-on:click="selectTicker(t)"
             v-bind:class="{
-              'border-4': sel === t,
+              'border-4': selectedTicker === t,
             }"
             class="bg-white overflow-hidden shadow rounded-lg border-purple-800 border-solid cursor-pointer"
           >
@@ -187,20 +187,20 @@
         </dl>
         <hr class="w-full border-t border-gray-600 my-4" />
       </template>
-      <section v-if="sel" class="relative">
+      <section v-if="selectedTicker" class="relative">
         <h3 class="text-lg leading-6 font-medium text-gray-900 my-8">
-          {{ sel.name }} - USD
+          {{ selectedTicker.name }} - USD
         </h3>
         <div class="flex items-end border-gray-600 border-b border-l h-64">
           <div
-            v-for="(bar, ind) in normalizeGraph()"
+            v-for="(bar, ind) in normalizedGraph"
             v-bind:key="ind"
             v-bind:style="{ height: `${bar}%` }"
             class="bg-purple-800 border w-10"
           ></div>
         </div>
         <button
-          v-on:click="sel = null"
+          v-on:click="selectedTicker = null"
           type="button"
           class="absolute top-0 right-0"
         >
@@ -237,14 +237,13 @@ export default {
     return {
       ticker: '',
       tickers: [],
-      sel: null,
+      selectedTicker: null,
       graph: [],
       allData: null,
       suggest: [],
       error: false,
       filter: '',
       page: 1,
-      hasNextPage: true,
     };
   },
 
@@ -270,41 +269,71 @@ export default {
     await this.fetchData();
   },
   watch: {
-    filter() {
-      const windowData = Object.fromEntries(
-        new URL(window.location).searchParams.entries(),
-      );
-      if (!windowData.page) {
-        this.page = 1;
-      }
-
-      window.history.pushState(
-        null,
-        document.title,
-        `${window.location.pathname}?filter=${this.filter}&page=${this.page}`,
-      );
+    tickers() {
+      localStorage.setItem('cryptomonicon-list', JSON.stringify(this.tickers));
     },
-    page() {
+    selectedTicker() {
+      this.graph = [];
+    },
+    paginatedTickers() {
+      if (this.paginatedTickers.length === 0 && this.page > 1) {
+        this.page -= 1;
+      }
+    },
+
+    filter() {
+      //TODO если страниц больше 1, то при обновлении страницы
+      // в урле сбрасывается до 1й
+      this.page = 1;
+    },
+    pageStageOptions(v) {
       window.history.pushState(
         null,
         document.title,
-        `${window.location.pathname}?filter=${this.filter}&page=${this.page}`,
+        `${window.location.pathname}?filter=${v.filter}&page=${v.page}`,
       );
     },
   },
 
-  methods: {
+  computed: {
+    startIndex() {
+      return (this.page - 1) * 6;
+    },
+
+    endIndex() {
+      return this.page * 6;
+    },
+
     filteredTickers() {
-      const start = (this.page - 1) * 6;
-      const end = this.page * 6;
-      const filtered = this.tickers.filter((ticker) =>
+      return this.tickers.filter((ticker) =>
         ticker.name.toLowerCase().includes(this.filter.toLowerCase()),
       );
-
-      this.hasNextPage = filtered.length > end;
-
-      return filtered.slice(start, end);
     },
+    paginatedTickers() {
+      return this.filteredTickers.slice(this.startIndex, this.endIndex);
+    },
+    hasNextPage() {
+      return this.filteredTickers.length > this.endIndex;
+    },
+    normalizedGraph() {
+      const maxValue = Math.max(...this.graph);
+      const minValue = Math.min(...this.graph);
+      if (maxValue === minValue) {
+        return this.graph.map(() => 50);
+      }
+      return this.graph.map(
+        (price) => 5 + ((price - minValue) * 95) / (maxValue - minValue),
+      );
+    },
+    pageStageOptions() {
+      return {
+        filter: this.filter,
+        page: this.page,
+      };
+    },
+  },
+
+  methods: {
     async fetchData() {
       const apiKey =
         '645a62f66756dcd69a2fe1a617ee476df5bddab0f1c59c966cb5e70ce7207d20';
@@ -316,12 +345,10 @@ export default {
     },
     add() {
       const currentTicker = { name: this.ticker.toUpperCase(), price: '0' };
-      this.tickers.push(currentTicker);
-      localStorage.setItem('cryptomonicon-list', JSON.stringify(this.tickers));
 
-      this.subscribeToUpdate(currentTicker.name);
-      this.ticker = '';
+      this.tickers = [...this.tickers, currentTicker];
       this.filter = '';
+      this.subscribeToUpdate(currentTicker.name);
     },
     findVariables(name) {
       this.error = false;
@@ -365,24 +392,19 @@ export default {
             ? dataFetch.USD.toFixed(2)
             : dataFetch.USD.toPrecision(2);
 
-        if (this.sel?.name === tickerName) {
+        if (this.selectedTicker?.name === tickerName) {
           this.graph.push(dataFetch.USD);
         }
       }, 3000);
     },
     selectTicker(ticker) {
-      this.sel = ticker;
-      this.graph = [];
+      this.selectedTicker = ticker;
     },
     handleDelete(t) {
       this.tickers = this.tickers.filter((item) => item !== t);
-    },
-    normalizeGraph() {
-      const maxValue = Math.max(...this.graph);
-      const minValue = Math.min(...this.graph);
-      return this.graph.map(
-        (price) => 5 + ((price - minValue) * 95) / (maxValue - minValue),
-      );
+      if (this.selectedTicker === t) {
+        this.selectedTicker = null;
+      }
     },
   },
 };
